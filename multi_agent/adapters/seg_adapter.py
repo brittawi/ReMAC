@@ -27,7 +27,7 @@ class SegmentationAdapter:
         """
         Parameters:
         - base_url: server base url. If None, chooses default by backend
-            sam  -> env SEG_API_BASE or http://127.0.0.1:8040
+            sam  -> env SEG_API_BASE or http://127.0.0.1:8039
             xsam -> env XSAM_API_BASE or http://127.0.0.1:8042
         - backend: 'sam' (default) or 'xsam' (X-SAM FastAPI)
             Can also be set via env SEG_BACKEND
@@ -43,7 +43,7 @@ class SegmentationAdapter:
                 self.base_url = os.getenv("XSAM_API_BASE", "http://127.0.0.1:8042")
             else:
                 # Default ports as requested: segmentation service at 8040
-                self.base_url = os.getenv("SEG_API_BASE", "http://127.0.0.1:8040")
+                self.base_url = os.getenv("SEG_API_BASE", "http://127.0.0.1:8039")
 
         self.timeout = timeout
         self.dry_run = dry_run
@@ -114,7 +114,7 @@ class SegmentationAdapter:
             # Fallback to SAM when X-SAM throws or returns empty
             orig_url = self.base_url
             try:
-                self.base_url = os.getenv("SEG_API_BASE", "http://127.0.0.1:8040")
+                self.base_url = os.getenv("SEG_API_BASE", "http://127.0.0.1:8039")
                 return self._segment_sam(image, text=text, extra=extra or {})
             finally:
                 self.base_url = orig_url

@@ -4,6 +4,7 @@ import base64
 import tempfile
 from typing import Optional, List
 import requests
+from openai import OpenAI
 
 # Optional Gemini SDK import is deferred in methods to avoid hard dependency at import time
 
@@ -161,7 +162,18 @@ class GPTAdapter:
         azure_deployment: Optional[str] = None,
     ):
         # backends: 'openrouter' (default) | 'azure'
-        self.backend = (backend or os.getenv("GPT_BACKEND", "openrouter")).lower()
+        # self.backend = (backend or os.getenv("GPT_BACKEND", "openrouter")).lower()
+        # self.backend = "ollama"
+        self.backend = "vllm"
+        self.vllm_model = "Qwen/Qwen2.5-VL-32B-Instruct"
+        self.vllm_client = OpenAI(
+            api_key="EMPTY",
+            base_url="http://localhost:8000/v1"
+        )
+        
+        # Change if other model should be used, model should be pulled!
+        self.ollama_model = "qwen3-vl:32b"
+        
         # OpenRouter settings
         self.or_base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         self.or_api_key = os.getenv("OPENROUTER_API_KEY", "")
@@ -376,6 +388,92 @@ class GPTAdapter:
             return obj.get("choices", [{}])[0].get("message", {}).get("content")
         except Exception:
             return None
+        
+    def _ollama_chat_with_images(self, image_paths: List[str], system_prompt: str, model_override: Optional[str] = None) -> Optional[str]:
+        # Ollama typically runs on port 11434 locally
+        base_url = "http://localhost:11434/api/chat"
+        model = model_override or self.ollama_model  # Ensure this model is pulled in your local Ollama
+
+        def _encode_image_to_base64(path: str) -> str:
+            with open(path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+
+        try:
+            
+            images = []
+            for p in image_paths:
+                image_base64 = _encode_image_to_base64(p)
+                images.append(image_base64)
+
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": "Analyze the provided image(s).",  # Text prompt for the user role
+                        "images": images          # Native Ollama image format
+                    }
+                ],
+                "stream": False # Keep False to get a single response object
+            }
+
+            resp = requests.post(base_url, json=payload, timeout=300)
+
+            if resp.status_code != 200:
+                print(f"Error: {resp.text}")
+                return None
+
+            obj = resp.json()
+            content=obj.get("message", {}).get("content");
+            model = obj.get("model", {})
+            # print("meeerrrrooooww",content);
+            return content;
+
+        except Exception as e:
+            print(f"Exception: {e}")
+            return None
+        
+    def _ollama_chat_with_image(self, image_path: str, system_prompt: str, model_override: Optional[str] = None) -> Optional[str]:
+        return self._ollama_chat_with_images([image_path], system_prompt, model_override)
+    
+    def _vllm_chat_with_images(self, image_paths: List[str], system_prompt: str, model_override: Optional[str] = None) -> Optional[str]:
+        
+        model = model_override or self.vllm_model
+
+        try:
+            contents = [{"type": "text", "text": system_prompt}]
+
+            for p in image_paths:
+                data_url = _encode_image_to_data_url(p)
+                contents.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": data_url
+                        }
+                    }
+                )
+
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": contents},
+                ],
+            }
+            
+            response = self.client.chat.completions.create(**payload)
+
+            return response.choices[0].message.content
+
+        except Exception as e:
+            print(f"vLLM error: {e}")
+            return None
+        
+    def _vllm_chat_with_image(self, image_path, system_prompt, model_override: Optional[str] = None,):
+
+       return self._vllm_chat_with_images([image_path], system_prompt, model_override=model_override,)
 
     # --- Azure backend ---
     def _azure_chat_with_image(self, image_path: str, system_prompt: str) -> Optional[str]:
@@ -496,6 +594,8 @@ class GPTAdapter:
             # Dispatch by backend
             if self.backend == "azure":
                 resp_text = self._azure_chat_with_image(tf.name, prompt_text)
+            elif self.backend=="ollama":
+                resp_text = self._ollama_chat_with_image(tf.name, prompt_text)
             else:
                 resp_text = self._openrouter_chat_with_image(tf.name, prompt_text, model_override=None)
             if resp_text:
@@ -635,6 +735,8 @@ class GPTAdapter:
                 resp_text = None
                 if api_key:
                     resp_text = self._openrouter_chat_with_images([t1.name], prompt_text, model_override=model)
+                elif self.backend == "ollama":
+                    resp_text = self._ollama_chat_with_images([t1.name], prompt_text)
                 if not resp_text:
                     resp_text = self._azure_chat_with_images([t1.name], prompt_text)
                 if resp_text:
@@ -676,6 +778,8 @@ class GPTAdapter:
 
                 if api_key:
                     resp_text = self._openrouter_chat_with_images([t1.name, t2.name], prompt_text, model_override=model)
+                elif self.backend == "ollama":
+                    resp_text = self._ollama_chat_with_images([t1.name], prompt_text)
                 if not resp_text:
                     resp_text = self._azure_chat_with_images([t1.name, t2.name], prompt_text)
                 if resp_text:

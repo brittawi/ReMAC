@@ -31,8 +31,8 @@ _pipe: Optional[FluxControlNetInpaintingPipeline] = None
 _pipe_lock = asyncio.Lock()
 
 # Paths and model IDs (adapt if your paths differ)
-TRANSFORMER_REPO_PATH = "/data/fanhongxing/ckpt/FLUX.1-dev"
-CONTROLNET_MODEL_ID = "alimama-creative/FLUX.1-dev-Controlnet-Inpainting-Beta"
+TRANSFORMER_REPO_PATH = "/data/internal-shared/FLUX.1-dev"
+CONTROLNET_MODEL_ID = "/data/internal-shared/FLUX.1-dev-Controlnet-Inpainting-Beta"
 
 
 def _require_cuda():
@@ -177,9 +177,9 @@ if __name__ == "__main__":
 
     # Do not eagerly load models on startup unless desired; they will load on first request
     uvicorn.run(
-        "api_server:app",
+        "api_server_flux:app",
         host="0.0.0.0",
-        port=8041,
+        port=8043,
         reload=False,
         workers=1,
     )

@@ -365,4 +365,4 @@ if __name__ == "__main__":
         f"--ckpt={args.ckpt}"
     ]
 
-    uvicorn.run("xsam_api_server:app", host=args.host, port=args.port, reload=False)
+    uvicorn.run("api_server_xsam:app", host=args.host, port=args.port, reload=False)

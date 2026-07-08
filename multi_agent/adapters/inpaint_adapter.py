@@ -14,7 +14,7 @@ class InpaintAdapter:
     """
     def __init__(self, base_url: Optional[str] = None, timeout: int = 120, dry_run: bool = False):
         # Default ports as requested: inpainting service at 8041
-        self.base_url = base_url or os.getenv("INPAINT_API_BASE", "http://127.0.0.1:8041")
+        self.base_url = base_url or os.getenv("INPAINT_API_BASE", "http://127.0.0.1:8043")
         self.timeout = timeout
         self.dry_run = dry_run
         # Allow overriding endpoint path

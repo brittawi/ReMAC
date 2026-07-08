@@ -30,7 +30,8 @@ GROUNDING_DINO_CHECKPOINT_PATH = os.getenv(
     os.path.abspath('groundingdino_swint_ogc.pth'),
 )
 SAM_ENCODER_VERSION = os.getenv('SAM_ENCODER_VERSION', 'vit_h')
-SAM_CHECKPOINT_PATH = '/data/fanhongxing/code/amodal/Grounded-Segment-Anything/sam_vit_h_4b8939.pth'
+#SAM_CHECKPOINT_PATH = '/data/fanhongxing/code/amodal/Grounded-Segment-Anything/sam_vit_h_4b8939.pth'
+SAM_CHECKPOINT_PATH = 'sam_vit_h_4b8939.pth'
 
 # Inference thresholds
 DEFAULT_BOX_THRESHOLD = float(os.getenv('BOX_THRESHOLD', '0.25'))
@@ -233,4 +234,4 @@ def healthz():
 # Entry point for `python api_server.py`
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run('api_server:app', host='0.0.0.0', port=8040, reload=False)
+    uvicorn.run('api_server_sam:app', host='0.0.0.0', port=8039, reload=False)
