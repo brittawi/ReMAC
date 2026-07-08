@@ -1,7 +1,5 @@
 # Reasoning-Driven Amodal Completion (ReMAC)
 
-> **Note**: This project is currently under active development.
-
 [Arxiv 2025] **Reasoning-Driven Amodal Completion: Collaborative Agents and Perceptual Evaluation**
 ![Teaser](asset/Teaser.png)
 
