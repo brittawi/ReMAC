@@ -2,9 +2,10 @@
 set -euo pipefail
 
 # Tunable via env
-IMAGE="${IMAGE:-asset/cat.jpg}"
-SEG_TEXT="${SEG_TEXT:-cat}"
-PROMPT="${PROMPT:-}"
+IMAGE="${IMAGE:-asset/coffee_pot_1_seq0_bin6.png}"
+MODAL_MASK="${MODAL_MASK:-asset/coffee_pot_1_seq0_bin6_modal.png}"
+SEG_TEXT="${SEG_TEXT:-coffee pot}"
+PROMPT="${PROMPT:-coffee pot}"
 SEG_URL="${SEG_URL:-}"
 SEG_BACKEND="${SEG_BACKEND:-xsam}"
 
@@ -20,6 +21,7 @@ echo $LLM_CHECK
 cmd=(
   python main.py
   --image "$IMAGE"
+  --modal-mask "$MODAL_MASK"
   --seg-text "$SEG_TEXT"
   --boundary-mode boundary_bbox
   --dilate-k 7
