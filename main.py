@@ -41,6 +41,7 @@ def _configure_llm_models(general_choice: str, check_choice: str, rank_choice: s
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", required=True, help="input image path")
+    parser.add_argument("--modal-mask", default=None, help="path to the modal mask of the target object")
     parser.add_argument("--seg-text", dest="seg_text", required=True, help="segmentation prompt, e.g., 'red cup'")
     parser.add_argument("--prompt", default=None, help="inpaint prompt; if absent, GPT will help")
     parser.add_argument("--out", default=None, help="output image path")
@@ -100,6 +101,12 @@ def main():
     orch = Orchestrator(seg=seg, ip=ip, gpt=gpt)
 
     image = Image.open(args.image).convert("RGB")
+    if args.modal_mask is not None:
+        modal_mask = Image.open(args.modal_mask).convert("L")
+        print("using provided modal mask")
+    else:
+        modal_mask = args.modal_mask
+        print("no modal mask provided")
     
     # If any side of the image is larger than 1024, compress it to within 1024 while maintaining the aspect ratio
     max_side = 1024
@@ -108,6 +115,8 @@ def main():
         scale = max_side / max(w, h)
         new_w, new_h = int(w * scale), int(h * scale)
         image = image.resize((new_w, new_h), Image.LANCZOS)
+        if args.modal_mask is not None:
+            modal_mask = modal_mask.resize((new_w, new_h), Image.NEAREST)
         print(f"Image resized from {w}x{h} to {new_w}x{new_h}")
 
     # We only know pad_amount after boundary analysis, so we cannot directly compute the ratio here.
@@ -146,8 +155,10 @@ def main():
         restore_square_crop=args.restore_square_crop,
         enable_ranking=bool(models.get("rank")),
         save_intermediate=args.save_intermediate,
+        modal_mask=modal_mask,
         **extra_kwargs,
     )
+    print("result", result)
     # Always save the primary output
     if args.out:
         result["output"].save(args.out)

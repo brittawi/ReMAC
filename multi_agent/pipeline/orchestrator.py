@@ -51,6 +51,7 @@ class Orchestrator:
         enable_boundary_analysis: bool = True,
         restore_square_crop: bool = False,
         save_intermediate: bool = False,
+        modal_mask: Optional[Image.Image] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         # portable default debug dir (env > arg > ./debug)
@@ -116,6 +117,7 @@ class Orchestrator:
 
         # 1) Use occluding_object template to identify occluder list
         occluding_names = self.gpt.gen_inpaint_prompt_from_image(image, seg_text, prompt_type="occluding_object") or "[]"
+        print("occluding_names", occluding_names)
         if save_intermediate:
             with open(os.path.join(initial_dir, "occluding_objects.txt"), "w", encoding="utf-8") as f:
                 f.write(str(occluding_names))
@@ -141,6 +143,7 @@ class Orchestrator:
         else:
             # Keep the original single-sentence description path
             desc = prompt or self.gpt.gen_inpaint_prompt_from_image(image, seg_text, prompt_type="prompt") or ""
+            print("using inpaint prompt", desc)
             desc = _ensure_constraints(desc, (occluded_object or seg_text))
             if save_intermediate:
                 with open(os.path.join(initial_dir, "object_description.txt"), "w", encoding="utf-8") as f:
@@ -216,7 +219,7 @@ class Orchestrator:
         bbox_target = None
         from ..utils.mask_adapter import merge_masks
 
-        def _collect_masks(payload: Dict[str, Any], class_names_all: List[str]):
+        def _collect_masks(payload: Dict[str, Any], class_names_all: List[str], modal_mask=None):
             dets = payload.get("detections") or []
             masks_target: List[Image.Image] = []
             masks_occluding: List[Image.Image] = []
@@ -245,6 +248,10 @@ class Orchestrator:
                     elif cls in occluder_keys_local:
                         masks_occluding.append(mask_img)
                         occluder_named.append((mask_img, cls))
+                        
+                # override masks target with modal mask in case it is given
+                if modal_mask is not None:
+                    masks_target = [modal_mask.convert("L")]
             return masks_target, masks_occluding, dets, occluder_named
 
         def _filter_masks_by_overlap(occluder_masks: List[Image.Image], target_visible: Image.Image, thr: float = 0.8):
@@ -285,7 +292,7 @@ class Orchestrator:
         # if save_intermediate:
         #     with open(os.path.join(initial_dir, "detections.json"), "w", encoding="utf-8") as f:
         #         json.dump(payload_joint, f, ensure_ascii=False, indent=2)
-        masks_target, masks_occluding, dets_joint, occluder_named = _collect_masks(payload_joint, class_names)
+        masks_target, masks_occluding, dets_joint, occluder_named = _collect_masks(payload_joint, class_names, modal_mask)
         segmentation_attempt_logs.append({
             "attempt": 1,
             "mode": "joint",
@@ -329,7 +336,7 @@ class Orchestrator:
                     #             json.dump({"backend": alt_backend, "payload": payload_alt}, f, ensure_ascii=False, indent=2)
                     # except Exception:
                     #     pass
-                    masks_t_alt, _, dets_alt, _ = _collect_masks(payload_alt, [seg_text])
+                    masks_t_alt, _, dets_alt, _ = _collect_masks(payload_alt, [seg_text], modal_mask)
                     if masks_t_alt:
                         from ..utils.mask_adapter import merge_masks as _merge
                         target_mask = _merge(masks_t_alt)
@@ -407,7 +414,7 @@ class Orchestrator:
             # if save_intermediate:
             #     with open(os.path.join(initial_dir, "detections_fallback_target.json"), "w", encoding="utf-8") as f:
             #         json.dump(payload_t, f, ensure_ascii=False, indent=2)
-            masks_t, _, dets_t, _ = _collect_masks(payload_t, [seg_text])
+            masks_t, _, dets_t, _ = _collect_masks(payload_t, [seg_text], modal_mask)
             segmentation_attempt_logs.append({
                 "attempt": 2,
                 "mode": "target_only",
@@ -460,7 +467,7 @@ class Orchestrator:
                             # if save_intermediate:
                             #     with open(os.path.join(initial_dir, "detections_fallback_occluders_after_target.json"), "w", encoding="utf-8") as f:
                             #         json.dump(payload_occ_fb, f, ensure_ascii=False, indent=2)
-                            _, masks_occ_fb, dets_occ_fb, occluder_named_fb = _collect_masks(payload_occ_fb, class_names)
+                            _, masks_occ_fb, dets_occ_fb, occluder_named_fb = _collect_masks(payload_occ_fb, class_names, modal_mask)
                             segmentation_attempt_logs.append({
                                 "attempt": 2.5,
                                 "mode": "occluders_after_target_only",
@@ -502,7 +509,7 @@ class Orchestrator:
                     # if save_intermediate:
                     #     with open(os.path.join(initial_dir, "detections_fallback_occluders.json"), "w", encoding="utf-8") as f:
                     #         json.dump(payload_o, f, ensure_ascii=False, indent=2)
-                    _, masks_o, dets_o, _ = _collect_masks(payload_o, class_names)
+                    _, masks_o, dets_o, _ = _collect_masks(payload_o, class_names, modal_mask)
                     segmentation_attempt_logs.append({
                         "attempt": 3,
                         "mode": "occluders_only",
@@ -871,8 +878,8 @@ class Orchestrator:
             composite = Image.fromarray(arr, mode="RGB")
             # Save composite for debug
             comp_path = os.path.join(check_dir, "missed_occlusion_input.png")
-            # if save_intermediate:
-            #     safe_save(composite, comp_path)
+            if save_intermediate:
+                safe_save(composite, comp_path)
             missed_raw = self.gpt.check_missed_occlusions(composite, target_object=(occluded_object or seg_text)) or "[]"
             if save_intermediate:
                 with open(os.path.join(check_dir, "missed_occluders_raw.txt"), "w", encoding="utf-8") as f:
@@ -1735,6 +1742,7 @@ class Orchestrator:
                 "hypotheses": hypos,
             })
             if final_instance_masks:
+                print("final masks exist")
                 ret["final_masks"] = final_instance_masks
         if ranking_result is not None:
             ret["ranking"] = ranking_result
