@@ -168,7 +168,7 @@ class GPTAdapter:
         self.vllm_model = "Qwen/Qwen2.5-VL-32B-Instruct"
         self.vllm_client = OpenAI(
             api_key="EMPTY",
-            base_url="http://localhost:8000/v1"
+            base_url="http://127.0.0.1:8000/v1"
         )
         
         # Change if other model should be used, model should be pulled!
@@ -439,6 +439,8 @@ class GPTAdapter:
     
     def _vllm_chat_with_images(self, image_paths: List[str], system_prompt: str, model_override: Optional[str] = None) -> Optional[str]:
         
+        print("using vllm")
+        
         model = model_override or self.vllm_model
 
         try:
@@ -463,7 +465,8 @@ class GPTAdapter:
                 ],
             }
             
-            response = self.client.chat.completions.create(**payload)
+            response = self.vllm_client.chat.completions.create(**payload)
+            print("response", response.choices[0].message.content)
 
             return response.choices[0].message.content
 
@@ -596,6 +599,8 @@ class GPTAdapter:
                 resp_text = self._azure_chat_with_image(tf.name, prompt_text)
             elif self.backend=="ollama":
                 resp_text = self._ollama_chat_with_image(tf.name, prompt_text)
+            elif self.backend == "vllm":
+                    resp_text = self._vllm_chat_with_image(tf.name, prompt_text)
             else:
                 resp_text = self._openrouter_chat_with_image(tf.name, prompt_text, model_override=None)
             if resp_text:
@@ -737,6 +742,8 @@ class GPTAdapter:
                     resp_text = self._openrouter_chat_with_images([t1.name], prompt_text, model_override=model)
                 elif self.backend == "ollama":
                     resp_text = self._ollama_chat_with_images([t1.name], prompt_text)
+                elif self.backend == "vllm":
+                    resp_text = self._vllm_chat_with_images([t1.name], prompt_text)
                 if not resp_text:
                     resp_text = self._azure_chat_with_images([t1.name], prompt_text)
                 if resp_text:
@@ -780,6 +787,8 @@ class GPTAdapter:
                     resp_text = self._openrouter_chat_with_images([t1.name, t2.name], prompt_text, model_override=model)
                 elif self.backend == "ollama":
                     resp_text = self._ollama_chat_with_images([t1.name], prompt_text)
+                elif self.backend == "vllm":
+                    resp_text = self._vllm_chat_with_images([t1.name], prompt_text)
                 if not resp_text:
                     resp_text = self._azure_chat_with_images([t1.name, t2.name], prompt_text)
                 if resp_text:
