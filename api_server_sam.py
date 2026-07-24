@@ -31,7 +31,11 @@ GROUNDING_DINO_CHECKPOINT_PATH = os.getenv(
 )
 SAM_ENCODER_VERSION = os.getenv('SAM_ENCODER_VERSION', 'vit_h')
 #SAM_CHECKPOINT_PATH = '/data/fanhongxing/code/amodal/Grounded-Segment-Anything/sam_vit_h_4b8939.pth'
-SAM_CHECKPOINT_PATH = 'sam_vit_h_4b8939.pth'
+# SAM_CHECKPOINT_PATH = 'sam_vit_h_4b8939.pth'
+SAM_CHECKPOINT_PATH = os.getenv(
+    "SAM_CHECKPOINT_PATH",
+    "sam_vit_h_4b8939.pth",
+)
 
 # Inference thresholds
 DEFAULT_BOX_THRESHOLD = float(os.getenv('BOX_THRESHOLD', '0.25'))

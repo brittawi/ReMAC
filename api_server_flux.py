@@ -31,8 +31,10 @@ _pipe: Optional[FluxControlNetInpaintingPipeline] = None
 _pipe_lock = asyncio.Lock()
 
 # Paths and model IDs (adapt if your paths differ)
-TRANSFORMER_REPO_PATH = "/data/internal-shared/FLUX.1-dev"
-CONTROLNET_MODEL_ID = "/data/internal-shared/FLUX.1-dev-Controlnet-Inpainting-Beta"
+# TRANSFORMER_REPO_PATH = "/data/internal-shared/FLUX.1-dev"
+# CONTROLNET_MODEL_ID = "/data/internal-shared/FLUX.1-dev-Controlnet-Inpainting-Beta"
+TRANSFORMER_REPO_PATH = "/mimer/NOBACKUP/groups/ltumm/briwil/checkpoints/FLUX.1-dev"
+CONTROLNET_MODEL_ID = "/mimer/NOBACKUP/groups/ltumm/briwil/checkpoints/FLUX.1-dev-Controlnet-Inpainting-Beta"
 
 
 def _require_cuda():
